@@ -10,6 +10,7 @@ from itertools import takewhile
 from operator import attrgetter
 from pathlib import Path
 
+CONTEXT_LEN = 3
 SOURCE_LINE_RE = re.compile(r"^\s*(?P<lineno>\d+)\|\s*(?P<count>[^|\s]*)\s*\|(?P<text>.*)$")
 
 Line = namedtuple("Line", "line, lineno, count, is_covered, text")
@@ -67,7 +68,7 @@ def diff(filename, left, right):
     )
 
     show_header = True
-    for opcodes in matcher.get_grouped_opcodes():
+    for opcodes in matcher.get_grouped_opcodes(n=CONTEXT_LEN):
         lines = []
         for tag, l_from, l_to, r_from, r_to in opcodes:
             if tag == "equal":
@@ -78,8 +79,10 @@ def diff(filename, left, right):
                     marker = " " if line.is_covered else "+"
                     lines.append(DiffLine(marker=marker, line=line.line, tag=tag))
 
-        start_offset = sum(1 for _ in context(lines)) - 3
-        end_offset = sum(1 for _ in context(reversed(lines))) - 3
+        start_context = sum(1 for _ in context(lines))
+        start_offset = max(0, start_context - CONTEXT_LEN)
+        end_context = sum(1 for _ in context(reversed(lines)))
+        end_offset = max(0, end_context - CONTEXT_LEN)
 
         lines = lines[start_offset:len(lines) - end_offset]
         if not lines:
