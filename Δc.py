@@ -33,14 +33,12 @@ class DiffLine(namedtuple("DiffLine", "marker, line, tag")):
 
 def parse(lines):
     files = defaultdict(list)
-    filename = None
+    filename = Path("/<unknown file>")
     for line in lines:
         line = line.rstrip()
         if line.startswith("/") and line.endswith(":"):
             filename = Path(line.removesuffix(":"))
         else:
-            assert filename is not None
-
             match = SOURCE_LINE_RE.fullmatch(line)
             if match is not None:
                 files[filename].append(
