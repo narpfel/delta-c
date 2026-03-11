@@ -2,6 +2,7 @@
 
 import argparse
 import re
+import subprocess
 from collections import defaultdict
 from collections import namedtuple
 from difflib import SequenceMatcher
@@ -99,21 +100,50 @@ def diff(filename, left, right):
         yield from lines
 
 
+def check_output(*args, **kwargs):
+    return subprocess.check_output(*args, **kwargs, text=True)
+
+
+def git(repo):
+    return ["git", "-C", repo]
+
+
+def git_switch(repo, ref):
+    subprocess.check_call([*git(repo), "checkout", ref])
+
+
+def run_in(repo, ref, command, *args, **kwargs):
+    try:
+        git_switch(repo, ref)
+        return check_output(command, *args, **kwargs)
+    finally:
+        git_switch(repo, "-")
+
+
+def get_coverage(repo, ref, command):
+    return run_in(repo, ref, command, cwd=repo).splitlines()
+
+
 def main(args=None):
     parser = argparse.ArgumentParser()
-    parser.add_argument("left", type=Path)
-    parser.add_argument("right", type=Path)
-    parser.add_argument("--relative-to", type=lambda arg: Path(arg).resolve(), default=Path.cwd())
+    parser.add_argument(
+        "-C", "--git-repo",
+        type=lambda arg: Path(arg).resolve(),
+        default=Path.cwd(),
+    )
+    parser.add_argument("left")
+    parser.add_argument("right")
+    parser.add_argument("command", nargs="+")
     args = parser.parse_args(args)
 
-    with args.left.open() as file:
-        left = parse(file)
-    with args.right.open() as file:
-        right = parse(file)
+    left = check_output([*git(args.git_repo), "merge-base", args.left, args.right]).strip()
+
+    left = parse(get_coverage(args.git_repo, args.left, args.command))
+    right = parse(get_coverage(args.git_repo, args.right, args.command))
 
     for (filename, left_lines), right_lines in zip(left.items(), right.values()):
         lines = diff(
-            filename.relative_to(args.relative_to, walk_up=True),
+            filename.relative_to(args.git_repo, walk_up=True),
             left_lines,
             right_lines,
         )
