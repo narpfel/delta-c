@@ -13,8 +13,11 @@ from pathlib import Path
 
 CONTEXT_LEN = 3
 SOURCE_LINE_RE = re.compile(r"^\s*(?P<lineno>\d+)\|\s*(?P<count>[^|\s]*)\s*\|(?P<text>.*)$")
+REGION_COVERAGE_ANNOTATION = re.compile(r"\^(?P<count>\d+)")
+REGION_COVERAGE_LINE = re.compile(fr"^\s*(?:{REGION_COVERAGE_ANNOTATION.pattern})*\s*$")
 
 Line = namedtuple("Line", "line, lineno, count, is_covered, text")
+RegionCoverageLine = namedtuple("RegionCoverageLine", "line, text, counts, is_covered")
 
 
 class CompareBy(namedtuple("CompareBy", "keys, item")):
@@ -52,12 +55,30 @@ def parse(lines):
                         text=match["text"],
                     ),
                 )
+            elif REGION_COVERAGE_LINE.fullmatch(line):
+                counts = tuple(int(m["count"]) for m in REGION_COVERAGE_ANNOTATION.finditer(line))
+                files[filename].append(
+                    RegionCoverageLine(
+                        line=line,
+                        text=files[filename][-1].text,
+                        counts=counts,
+                        is_covered=tuple(map(bool, counts)),
+                    ),
+                )
 
     return files
 
 
 def context(lines):
     return takewhile(lambda line: line.marker == " ", lines)
+
+
+def is_fully_covered(line):
+    match line:
+        case Line(is_covered=is_covered):
+            return is_covered
+        case RegionCoverageLine(is_covered=is_covered):
+            return all(is_covered)
 
 
 def diff(filename, left, right):
@@ -77,7 +98,7 @@ def diff(filename, left, right):
                     lines.append(DiffLine(marker=" ", line=line.line, tag=tag))
             elif tag in {"replace", "insert"}:
                 for line in right[r_from:r_to]:
-                    marker = " " if line.is_covered else "+"
+                    marker = " " if is_fully_covered(line) else "+"
                     lines.append(DiffLine(marker=marker, line=line.line, tag=tag))
 
         start_context = sum(1 for _ in context(lines))
