@@ -57,7 +57,7 @@ def parse(lines):
                 )
             elif REGION_COVERAGE_LINE.fullmatch(line):
                 counts = tuple(m["count"] for m in REGION_COVERAGE_ANNOTATION.finditer(line))
-                is_covered = tuple(count != "0" for count in counts)
+                is_covered = all(count != "0" for count in counts)
                 files[filename].append(
                     RegionCoverageLine(
                         line=line,
@@ -72,14 +72,6 @@ def parse(lines):
 
 def context(lines):
     return takewhile(lambda line: line.marker == " ", lines)
-
-
-def is_fully_covered(line):
-    match line:
-        case Line(is_covered=is_covered):
-            return is_covered
-        case RegionCoverageLine(is_covered=is_covered):
-            return all(is_covered)
 
 
 def diff(filename, left, right):
@@ -99,7 +91,7 @@ def diff(filename, left, right):
                     lines.append(DiffLine(marker=" ", line=line.line, tag=tag))
             elif tag in {"replace", "insert"}:
                 for line in right[r_from:r_to]:
-                    marker = " " if is_fully_covered(line) else "+"
+                    marker = " " if line.is_covered else "+"
                     lines.append(DiffLine(marker=marker, line=line.line, tag=tag))
 
         start_context = sum(1 for _ in context(lines))
