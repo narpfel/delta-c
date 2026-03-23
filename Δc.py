@@ -157,9 +157,9 @@ def main(args=None):
     parser.add_argument("command", nargs="+")
     args = parser.parse_args(args)
 
-    left = check_output([*git(args.git_repo), "merge-base", args.left, args.right]).strip()
+    merge_base = check_output([*git(args.git_repo), "merge-base", args.left, args.right]).strip()
 
-    left = parse(get_coverage(args.git_repo, args.left, args.command))
+    left = parse(get_coverage(args.git_repo, merge_base, args.command))
     right = parse(get_coverage(args.git_repo, args.right, args.command))
 
     for (filename, left_lines), right_lines in zip(left.items(), right.values()):
