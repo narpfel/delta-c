@@ -13,8 +13,8 @@ from pathlib import Path
 
 CONTEXT_LEN = 3
 SOURCE_LINE_RE = re.compile(r"^\s*(?P<lineno>\d+)\|\s*(?P<count>[^|\s]*)\s*\|(?P<text>.*)$")
-REGION_COVERAGE_ANNOTATION = re.compile(r"\^(?P<count>\d+)")
-REGION_COVERAGE_LINE = re.compile(fr"^\s*(?:{REGION_COVERAGE_ANNOTATION.pattern})*\s*$")
+REGION_COVERAGE_ANNOTATION = re.compile(r"\^(?P<count>\d+(?:\.\d+)?\w?)")
+REGION_COVERAGE_LINE = re.compile(fr"^\s*(?:{REGION_COVERAGE_ANNOTATION.pattern}\s*)*$")
 
 Line = namedtuple("Line", "line, lineno, count, is_covered, text")
 RegionCoverageLine = namedtuple("RegionCoverageLine", "line, text, counts, is_covered")
@@ -56,13 +56,14 @@ def parse(lines):
                     ),
                 )
             elif REGION_COVERAGE_LINE.fullmatch(line):
-                counts = tuple(int(m["count"]) for m in REGION_COVERAGE_ANNOTATION.finditer(line))
+                counts = tuple(m["count"] for m in REGION_COVERAGE_ANNOTATION.finditer(line))
+                is_covered = tuple(count != "0" for count in counts)
                 files[filename].append(
                     RegionCoverageLine(
                         line=line,
                         text=files[filename][-1].text,
                         counts=counts,
-                        is_covered=tuple(map(bool, counts)),
+                        is_covered=is_covered,
                     ),
                 )
 
