@@ -62,11 +62,11 @@ def parse(lines):
                 )
             elif REGION_COVERAGE_LINE.fullmatch(line):
                 counts = tuple(m["count"] for m in REGION_COVERAGE_ANNOTATION.finditer(line))
-                is_covered = all(count != "0" for count in counts)
+                is_covered = tuple(count != "0" for count in counts)
                 files[filename].append(
                     RegionCoverageLine(
                         line=line,
-                        text=line,
+                        text=files[filename][-1].text,
                         counts=counts,
                         is_covered=is_covered,
                     ),
@@ -74,11 +74,11 @@ def parse(lines):
             else:
                 match = BRANCH_COVERAGE_LINE.match(line)
                 if match is not None:
-                    is_covered = match["true"] != "0" and match["false"] != "0"
+                    is_covered = match["true"] != "0", match["false"] != "0"
                     files[filename].append(
                         BranchCoverageLine(
                             line=line,
-                            text=line,
+                            text=files[filename][-1].text,
                             is_covered=is_covered,
                         ),
                     )
@@ -88,6 +88,14 @@ def parse(lines):
 
 def context(lines):
     return takewhile(lambda line: line.marker == " ", lines)
+
+
+def is_fully_covered(line):
+    match line:
+        case Line():
+            return line.is_covered
+        case RegionCoverageLine() | BranchCoverageLine():
+            return all(line.is_covered)
 
 
 def diff(filename, left, right):
@@ -107,7 +115,7 @@ def diff(filename, left, right):
                     lines.append(DiffLine(marker=" ", line=line.line, tag=tag))
             elif tag in {"replace", "insert"}:
                 for line in right[r_from:r_to]:
-                    marker = " " if line.is_covered else "+"
+                    marker = " " if is_fully_covered(line) else "+"
                     lines.append(DiffLine(marker=marker, line=line.line, tag=tag))
 
         start_context = sum(1 for _ in context(lines))
