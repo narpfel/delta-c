@@ -13,11 +13,16 @@ from pathlib import Path
 
 CONTEXT_LEN = 3
 SOURCE_LINE_RE = re.compile(r"^\s*(?P<lineno>\d+)\|\s*(?P<count>[^|\s]*)\s*\|(?P<text>.*)$")
-REGION_COVERAGE_ANNOTATION = re.compile(r"\^(?P<count>\d+(?:\.\d+)?\w?)")
+NUMBER = r"\d+(?:\.\d+)?\w?"
+REGION_COVERAGE_ANNOTATION = re.compile(fr"\^(?P<count>{NUMBER})")
 REGION_COVERAGE_LINE = re.compile(fr"^\s*(?:{REGION_COVERAGE_ANNOTATION.pattern}\s*)*$")
+BRANCH_COVERAGE_LINE = re.compile(
+    fr"^\s*\|  Branch \(\d+:\d+\): \[True: (?P<true>{NUMBER}), False: (?P<false>{NUMBER})\]$",
+)
 
 Line = namedtuple("Line", "line, lineno, count, is_covered, text")
 RegionCoverageLine = namedtuple("RegionCoverageLine", "line, text, counts, is_covered")
+BranchCoverageLine = namedtuple("BranchCoverageLine", "line, text, is_covered")
 
 
 class CompareBy(namedtuple("CompareBy", "keys, item")):
@@ -66,6 +71,17 @@ def parse(lines):
                         is_covered=is_covered,
                     ),
                 )
+            else:
+                match = BRANCH_COVERAGE_LINE.match(line)
+                if match is not None:
+                    is_covered = match["true"] != "0" and match["false"] != "0"
+                    files[filename].append(
+                        BranchCoverageLine(
+                            line=line,
+                            text=line,
+                            is_covered=is_covered,
+                        ),
+                    )
 
     return files
 
