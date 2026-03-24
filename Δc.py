@@ -61,7 +61,7 @@ def parse(lines):
                 files[filename].append(
                     RegionCoverageLine(
                         line=line,
-                        text=files[filename][-1].text,
+                        text=line,
                         counts=counts,
                         is_covered=is_covered,
                     ),
