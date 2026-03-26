@@ -12,7 +12,7 @@ from itertools import takewhile
 from operator import attrgetter
 from pathlib import Path
 
-BG_MAGENTA = "\x1B[45m"
+BG_PURPLE = "\x1B[48;2;190;155;255m"
 RESET = "\x1B[m"
 
 CONTEXT_LEN = 3
@@ -198,7 +198,7 @@ def main(args=None):
         )
         for line in lines:
             line_has_colours = with_colours and getattr(line, "marker", None) == "+"
-            fg, reset = (BG_MAGENTA, RESET) if line_has_colours else ("", "")
+            fg, reset = (BG_PURPLE, RESET) if line_has_colours else ("", "")
             print(f"{fg}{line}{reset}")
 
 
