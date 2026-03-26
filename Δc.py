@@ -3,6 +3,7 @@
 import argparse
 import re
 import subprocess
+import sys
 from collections import defaultdict
 from collections import namedtuple
 from difflib import SequenceMatcher
@@ -10,6 +11,9 @@ from functools import partial
 from itertools import takewhile
 from operator import attrgetter
 from pathlib import Path
+
+BG_MAGENTA = "\x1B[45m"
+RESET = "\x1B[m"
 
 CONTEXT_LEN = 3
 SOURCE_LINE_RE = re.compile(r"^\s*(?P<lineno>\d+)\|\s*(?P<count>[^|\s]*)\s*\|(?P<text>.*)$")
@@ -165,6 +169,11 @@ def get_coverage(repo, ref, command):
 def main(args=None):
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        "--color",
+        choices=["auto", "always", "never"],
+        default="auto",
+    )
+    parser.add_argument(
         "-C", "--git-repo",
         type=lambda arg: Path(arg).resolve(),
         default=Path.cwd(),
@@ -173,6 +182,8 @@ def main(args=None):
     parser.add_argument("right")
     parser.add_argument("command", nargs="+")
     args = parser.parse_args(args)
+
+    with_colours = sys.stdout.isatty() if args.color == "auto" else args.color == "always"
 
     merge_base = check_output([*git(args.git_repo), "merge-base", args.left, args.right]).strip()
 
@@ -186,7 +197,9 @@ def main(args=None):
             right_lines,
         )
         for line in lines:
-            print(line)
+            line_has_colours = with_colours and getattr(line, "marker", None) == "+"
+            fg, reset = (BG_MAGENTA, RESET) if line_has_colours else ("", "")
+            print(f"{fg}{line}{reset}")
 
 
 if __name__ == "__main__":
