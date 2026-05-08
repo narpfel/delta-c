@@ -190,11 +190,11 @@ def main(args=None):
     left = parse(get_coverage(args.git_repo, merge_base, args.command))
     right = parse(get_coverage(args.git_repo, args.right, args.command))
 
-    for (filename, left_lines), right_lines in zip(left.items(), right.values()):
+    for filename in sorted(left.keys() | right.keys()):
         lines = diff(
             filename.relative_to(args.git_repo, walk_up=True),
-            left_lines,
-            right_lines,
+            left.get(filename, []),
+            right.get(filename, []),
         )
         for line in lines:
             line_has_colours = with_colours and getattr(line, "marker", None) == "+"
