@@ -12,6 +12,8 @@ from itertools import takewhile
 from operator import attrgetter
 from pathlib import Path
 
+FG_BOLD = "\x1B[1m"
+FG_GREEN = "\x1B[32m"
 BG_PURPLE = "\x1B[48;2;190;155;255m"
 RESET = "\x1B[m"
 
@@ -190,6 +192,8 @@ def main(args=None):
     left = parse(get_coverage(args.git_repo, merge_base, args.command))
     right = parse(get_coverage(args.git_repo, args.right, args.command))
 
+    diff_is_empty = True
+
     for filename in sorted(left.keys() | right.keys()):
         lines = diff(
             filename.relative_to(args.git_repo, walk_up=True),
@@ -197,9 +201,13 @@ def main(args=None):
             right.get(filename, []),
         )
         for line in lines:
+            diff_is_empty = False
             line_has_colours = with_colours and getattr(line, "marker", None) == "+"
             fg, reset = (BG_PURPLE, RESET) if line_has_colours else ("", "")
             print(f"{fg}{line}{reset}")
+
+    if diff_is_empty:
+        print(f"\n{FG_BOLD}{FG_GREEN}==> no additional uncovered lines!{RESET}\n")
 
 
 if __name__ == "__main__":
