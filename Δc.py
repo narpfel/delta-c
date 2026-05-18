@@ -12,10 +12,10 @@ from itertools import takewhile
 from operator import attrgetter
 from pathlib import Path
 
-FG_BOLD = "\x1B[1m"
-FG_GREEN = "\x1B[32m"
-BG_PURPLE = "\x1B[48;2;190;155;255m"
-RESET = "\x1B[m"
+FG_BOLD = "\x1b[1m"
+FG_GREEN = "\x1b[32m"
+BG_PURPLE = "\x1b[48;2;190;155;255m"
+RESET = "\x1b[m"
 
 CONTEXT_LEN = 3
 SOURCE_LINE_RE = re.compile(r"^\s*(?P<lineno>\d+)\|\s*(?P<count>[^|\s]*)\s*\|(?P<text>.*)$")
