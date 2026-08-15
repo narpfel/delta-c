@@ -14,8 +14,16 @@ from pathlib import Path
 
 FG_BOLD = "\x1b[1m"
 FG_GREEN = "\x1b[32m"
+FG_BLUE = "\x1b[34m"
 BG_PURPLE = "\x1b[48;2;190;155;255m"
 RESET = "\x1b[m"
+
+COLOURS = {
+    "+": BG_PURPLE,
+    "+++ ": f"{FG_BLUE}{FG_BOLD}",
+    "--- ": f"{FG_BLUE}{FG_BOLD}",
+    "@@ ": f"{FG_GREEN}{FG_BOLD}",
+}
 
 CONTEXT_LEN = 3
 SOURCE_LINE_RE = re.compile(r"^\s*(?P<lineno>\d+)\|\s*(?P<count>[^|\s]*)\s*\|(?P<text>.*)$")
@@ -135,12 +143,16 @@ def diff(filename, left, right):
 
         if show_header:
             show_header = False
-            yield f"--- a/{filename}"
-            yield f"+++ b/{filename}"
+            yield DiffLine(marker="--- ", line=f"a/{filename}", tag=None)
+            yield DiffLine(marker="+++ ", line=f"b/{filename}", tag=None)
 
         _, left_start, _, right_start, _ = opcodes[0]
 
-        yield f"@@ -{left_start + 1},1 +{right_start + start_offset + 1},{len(lines)} @@"
+        yield DiffLine(
+            marker="@@ ",
+            line=f"-{left_start + 1},1 +{right_start + start_offset + 1},{len(lines)} @@",
+            tag=None,
+        )
         yield from lines
 
 
@@ -202,9 +214,10 @@ def main(args=None):
         )
         for line in lines:
             diff_is_empty = False
-            line_has_colours = with_colours and getattr(line, "marker", None) == "+"
-            fg, reset = (BG_PURPLE, RESET) if line_has_colours else ("", "")
-            print(f"{fg}{line}{reset}")
+            colour = COLOURS.get(getattr(line, "marker", None))
+            should_colourise = with_colours and colour is not None
+            colour, reset = (colour, RESET) if should_colourise else ("", "")
+            print(f"{colour}{line}{reset}")
 
     if diff_is_empty:
         print(f"\n{FG_BOLD}{FG_GREEN}==> no additional uncovered lines!{RESET}\n")
