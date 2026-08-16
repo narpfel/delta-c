@@ -20,9 +20,9 @@ RESET = "\x1b[m"
 
 COLOURS = {
     "+": BG_PURPLE,
-    "+++ ": f"{FG_BLUE}{FG_BOLD}",
-    "--- ": f"{FG_BLUE}{FG_BOLD}",
-    "@@ ": f"{FG_GREEN}{FG_BOLD}",
+    "+++": f"{FG_BLUE}{FG_BOLD}",
+    "---": f"{FG_BLUE}{FG_BOLD}",
+    "@@": f"{FG_GREEN}{FG_BOLD}",
 }
 
 CONTEXT_LEN = 3
@@ -53,6 +53,11 @@ class CompareBy(namedtuple("CompareBy", "keys, item")):
 class DiffLine(namedtuple("DiffLine", "marker, line, tag")):
     def __str__(self):
         return f"{self.marker}{self.line}"
+
+
+class HeaderLine(namedtuple("HeaderLine", "marker, line")):
+    def __str__(self):
+        return f"{self.marker} {self.line}"
 
 
 def parse(lines):
@@ -143,15 +148,14 @@ def diff(filename, left, right):
 
         if show_header:
             show_header = False
-            yield DiffLine(marker="--- ", line=f"a/{filename}", tag=None)
-            yield DiffLine(marker="+++ ", line=f"b/{filename}", tag=None)
+            yield HeaderLine(marker="---", line=f"a/{filename}")
+            yield HeaderLine(marker="+++", line=f"b/{filename}")
 
         _, left_start, _, right_start, _ = opcodes[0]
 
-        yield DiffLine(
-            marker="@@ ",
+        yield HeaderLine(
+            marker="@@",
             line=f"-{left_start + 1},1 +{right_start + start_offset + 1},{len(lines)} @@",
-            tag=None,
         )
         yield from lines
 
