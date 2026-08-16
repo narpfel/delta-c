@@ -7,6 +7,7 @@ import sys
 from collections import defaultdict
 from collections import namedtuple
 from difflib import SequenceMatcher
+from functools import cache
 from functools import partial
 from itertools import takewhile
 from operator import attrgetter
@@ -26,7 +27,9 @@ COLOURS = {
 }
 
 CONTEXT_LEN = 3
-SOURCE_LINE_RE = re.compile(r"^\s*(?P<lineno>\d+)\|\s*(?P<count>[^|\s]*)\s*\|(?P<text>.*)$")
+SOURCE_LINE_RE = re.compile(
+    r"^(?P<prefix>\s*(?P<lineno>\d+)\|\s*(?P<count>[^|\s]*)\s*\|)(?P<text>.*)$",
+)
 NUMBER = r"\d+(?:\.\d+)?\w?"
 REGION_COVERAGE_ANNOTATION = re.compile(fr"\^(?P<count>{NUMBER})")
 REGION_COVERAGE_LINE = re.compile(fr"^\s*(?:{REGION_COVERAGE_ANNOTATION.pattern}\s*)*$")
@@ -34,7 +37,7 @@ BRANCH_COVERAGE_LINE = re.compile(
     fr"^\s*\|  Branch \(\d+:\d+\): \[True: (?P<true>{NUMBER}), False: (?P<false>{NUMBER})\]$",
 )
 
-Line = namedtuple("Line", "line, lineno, count, is_covered, text")
+Line = namedtuple("Line", "line, prefix, lineno, count, is_covered, text")
 RegionCoverageLine = namedtuple("RegionCoverageLine", "line, text, counts, is_covered")
 BranchCoverageLine = namedtuple("BranchCoverageLine", "line, text, is_covered")
 
@@ -52,12 +55,42 @@ class CompareBy(namedtuple("CompareBy", "keys, item")):
 
 class DiffLine(namedtuple("DiffLine", "marker, line, tag")):
     def __str__(self):
-        return f"{self.marker}{self.line}"
+        return f"{self.marker}{self.line.line}"
 
 
 class HeaderLine(namedtuple("HeaderLine", "marker, line")):
     def __str__(self):
         return f"{self.marker} {self.line}"
+
+
+class Highlighter:
+    def __init__(self, files):
+        self.files = files
+
+    @cache
+    def cached_highlight(self, filename, additional_end):
+        from pygments import highlight
+        from pygments.formatters import TerminalTrueColorFormatter
+        from pygments.lexers import guess_lexer_for_filename
+
+        class Formatter(TerminalTrueColorFormatter):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+
+                self.style_string = {
+                    token_type: (start, f"{end}{additional_end}")
+                    for token_type, (start, end)
+                    in self.style_string.items()
+                }
+
+        src = "\n".join(line.text for line in self.files[filename] if isinstance(line, Line))
+        lexer = guess_lexer_for_filename(filename, src)
+        return highlight(src, lexer, Formatter()).splitlines()
+
+    def highlight(self, filename, diff_line, colour):
+        line = diff_line.line
+        highlighted = self.cached_highlight(filename, colour)[line.lineno - 1]
+        return f"{diff_line.marker}{line.prefix}{highlighted}"
 
 
 def parse(lines):
@@ -73,6 +106,7 @@ def parse(lines):
                 files[filename].append(
                     Line(
                         line=match[0],
+                        prefix=match["prefix"],
                         lineno=int(match["lineno"]),
                         count=match["count"],
                         is_covered=match["count"] != "0",
@@ -131,11 +165,11 @@ def diff(filename, left, right):
         for tag, l_from, l_to, r_from, r_to in opcodes:
             if tag == "equal":
                 for line in right[r_from:r_to]:
-                    lines.append(DiffLine(marker=" ", line=line.line, tag=tag))
+                    lines.append(DiffLine(marker=" ", line=line, tag=tag))
             elif tag in {"replace", "insert"}:
                 for line in right[r_from:r_to]:
                     marker = " " if is_fully_covered(line) else "+"
-                    lines.append(DiffLine(marker=marker, line=line.line, tag=tag))
+                    lines.append(DiffLine(marker=marker, line=line, tag=tag))
 
         start_context = sum(1 for _ in context(lines))
         start_offset = max(0, start_context - CONTEXT_LEN)
@@ -208,6 +242,8 @@ def main(args=None):
     left = parse(get_coverage(args.git_repo, merge_base, args.command))
     right = parse(get_coverage(args.git_repo, args.right, args.command))
 
+    highlighter = Highlighter(right)
+
     diff_is_empty = True
 
     for filename in sorted(left.keys() | right.keys()):
@@ -221,6 +257,8 @@ def main(args=None):
             colour = COLOURS.get(getattr(line, "marker", None))
             should_colourise = with_colours and colour is not None
             colour, reset = (colour, RESET) if should_colourise else ("", "")
+            if with_colours and isinstance(line.line, Line):
+                line = highlighter.highlight(filename, line, colour)
             print(f"{colour}{line}{reset}")
 
     if diff_is_empty:
