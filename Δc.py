@@ -68,7 +68,7 @@ class Highlighter:
         self.files = files
 
     @cache
-    def cached_highlight(self, filename, additional_end):
+    def cached_highlight(self, filename):
         from pygments import highlight
         from pygments.formatters import TerminalTrueColorFormatter
         from pygments.lexers import guess_lexer_for_filename
@@ -78,7 +78,7 @@ class Highlighter:
                 super().__init__(*args, **kwargs)
 
                 self.style_string = {
-                    token_type: (start, f"{end}{additional_end}")
+                    token_type: (start, end.replace("00", "22;23;24"))
                     for token_type, (start, end)
                     in self.style_string.items()
                 }
@@ -87,9 +87,9 @@ class Highlighter:
         lexer = guess_lexer_for_filename(filename, src)
         return highlight(src, lexer, Formatter()).splitlines()
 
-    def highlight(self, filename, diff_line, colour):
+    def highlight(self, filename, diff_line):
         line = diff_line.line
-        highlighted = self.cached_highlight(filename, colour)[line.lineno - 1]
+        highlighted = self.cached_highlight(filename)[line.lineno - 1]
         return f"{diff_line.marker}{line.prefix}{highlighted}"
 
 
@@ -258,7 +258,7 @@ def main(args=None):
             should_colourise = with_colours and colour is not None
             colour, reset = (colour, RESET) if should_colourise else ("", "")
             if with_colours and isinstance(line.line, Line):
-                line = highlighter.highlight(filename, line, colour)
+                line = highlighter.highlight(filename, line)
             print(f"{colour}{line}{reset}")
 
     if diff_is_empty:
