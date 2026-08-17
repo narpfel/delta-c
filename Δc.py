@@ -82,10 +82,16 @@ class Highlighter:
                     for token_type, (start, end)
                     in self.style_string.items()
                 }
+                # remove whitespace highlighting because the workaround would remove it anyways
+                del self.style_string['Token.Text.Whitespace']
 
         src = "\n".join(line.text for line in self.files[filename] if isinstance(line, Line))
         lexer = guess_lexer_for_filename(filename, src)
-        return highlight(src, lexer, Formatter()).splitlines()
+        highlighted = highlight(src, lexer, Formatter())
+        # work around the GitHub Actions log viewer removing whitespace that is
+        # surrounded by ANSI escapes when a background colour is set (?) by
+        # swapping whitespace with preceding escapes
+        return re.sub(r"(\x1b\[(?:\d+;)*\d+m)+(\s+)", r"\2\1", highlighted).splitlines()
 
     def highlight(self, filename, diff_line):
         line = diff_line.line
