@@ -64,7 +64,8 @@ class HeaderLine(namedtuple("HeaderLine", "marker, line")):
 
 
 class Highlighter:
-    def __init__(self, files):
+    def __init__(self, enable_github_workaround, files):
+        self.enable_github_workaround = enable_github_workaround
         self.files = files
 
     @cache
@@ -88,10 +89,12 @@ class Highlighter:
         src = "\n".join(line.text for line in self.files[filename] if isinstance(line, Line))
         lexer = guess_lexer_for_filename(filename, src)
         highlighted = highlight(src, lexer, Formatter())
-        # work around the GitHub Actions log viewer removing whitespace that is
-        # surrounded by ANSI escapes when a background colour is set (?) by
-        # swapping whitespace with preceding escapes
-        return re.sub(r"(\x1b\[(?:\d+;)*\d+m)+(\s+)", r"\2\1", highlighted).splitlines()
+        if self.enable_github_workaround:
+            # work around the GitHub Actions log viewer removing whitespace that is
+            # surrounded by ANSI escapes when a background colour is set (?) by
+            # swapping whitespace with preceding escapes
+            highlighted = re.sub(r"(\x1b\[(?:\d+;)*\d+m)+(\s+)", r"\2\1", highlighted)
+        return highlighted.splitlines()
 
     def highlight(self, filename, diff_line):
         line = diff_line.line
@@ -232,6 +235,11 @@ def main(args=None):
         default="auto",
     )
     parser.add_argument(
+        "--enable-github-workaround",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
+    parser.add_argument(
         "-C", "--git-repo",
         type=lambda arg: Path(arg).resolve(),
         default=Path.cwd(),
@@ -248,7 +256,7 @@ def main(args=None):
     left = parse(get_coverage(args.git_repo, merge_base, args.command))
     right = parse(get_coverage(args.git_repo, args.right, args.command))
 
-    highlighter = Highlighter(right)
+    highlighter = Highlighter(args.enable_github_workaround, right)
 
     diff_is_empty = True
 
