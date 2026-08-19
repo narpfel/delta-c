@@ -16,5 +16,9 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: '3.14'
+      - name: check if workaround is still necessary
+        run: |
+          echo $'\x1b[48;2;190;155;255m+  500|      0|            Type::Struct(Struct::Incomplete { name, kind }) \x1b[38;2;102;102;102m=\x1b[39m\x1b[38;2;102;102;102m>\x1b[39m \x1b[38;2;0;0;255mwrite!\x1b[39m(f, \x1b[38;2;186;33;33m"\x1b[39m\x1b[38;2;186;33;33m{kind} {}\x1b[39m\x1b[38;2;186;33;33m"\x1b[39m, name.slice()),\x1b[m'
+          echo $'\x1b[48;2;190;155;255m+  501|      0|            Type::Struct(Struct::Complete { name, kind, members: \x1b[38;2;0;0;255;01m_\x1b[39;22;23;24m }) \x1b[38;2;102;102;102m=\x1b[39m\x1b[38;2;102;102;102m>\x1b[39m\x1b[m'
       - name: pre-commit
         uses: pre-commit/action@v3.0.1
