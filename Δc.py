@@ -87,7 +87,7 @@ class Highlighter:
                 del self.style_string['Token.Text.Whitespace']
 
         src = "\n".join(line.text for line in self.files[filename] if isinstance(line, Line))
-        lexer = guess_lexer_for_filename(filename, src)
+        lexer = guess_lexer_for_filename(filename, src, stripnl=False)
         highlighted = highlight(src, lexer, Formatter())
         if self.enable_github_workaround:
             # work around the GitHub Actions log viewer removing whitespace that is
