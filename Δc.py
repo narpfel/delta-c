@@ -92,8 +92,8 @@ class Highlighter:
         if self.enable_github_workaround:
             # work around the GitHub Actions log viewer removing whitespace that is
             # surrounded by ANSI escapes when a background colour is set (?) by
-            # swapping whitespace with preceding escapes
-            highlighted = re.sub(r"(\x1b\[(?:\d+;)*\d+m)+(\s+)", r"\2\1", highlighted)
+            # swapping non-newline whitespace with preceding escapes
+            highlighted = re.sub(r"(\x1b\[(?:\d+;)*\d+m)+([^\S\n]+)", r"\2\1", highlighted)
         return highlighted.splitlines()
 
     def highlight(self, filename, diff_line):
