@@ -73,6 +73,8 @@ class Highlighter:
         from pygments import highlight
         from pygments.formatters import TerminalTrueColorFormatter
         from pygments.lexers import guess_lexer_for_filename
+        from pygments.lexers.special import TextLexer
+        from pygments.util import ClassNotFound
 
         class Formatter(TerminalTrueColorFormatter):
             def __init__(self, *args, **kwargs):
@@ -87,7 +89,10 @@ class Highlighter:
                 del self.style_string['Token.Text.Whitespace']
 
         src = "\n".join(line.text for line in self.files[filename] if isinstance(line, Line))
-        lexer = guess_lexer_for_filename(filename, src, stripnl=False)
+        try:
+            lexer = guess_lexer_for_filename(filename, src, stripnl=False)
+        except ClassNotFound:
+            lexer = TextLexer(stripnl=False)
         highlighted = highlight(src, lexer, Formatter())
         if self.enable_github_workaround:
             # work around the GitHub Actions log viewer removing whitespace that is
