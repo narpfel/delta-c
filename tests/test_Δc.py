@@ -9,7 +9,6 @@ def make_diffable(lines):
     return [DEFAULT_LINE._replace(text=line, is_covered=True) for line in lines]
 
 
-@pytest.mark.xfail
 @pytest.mark.parametrize(
     "left",
     [

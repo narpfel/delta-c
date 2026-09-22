@@ -190,9 +190,10 @@ def diff(filename, left, right):
         end_context = sum(1 for _ in context(reversed(lines)))
         end_offset = max(0, end_context - CONTEXT_LEN)
 
-        lines = lines[start_offset:len(lines) - end_offset]
-        if not lines:
+        if start_context == len(lines):
             continue
+
+        lines = lines[start_offset:len(lines) - end_offset]
 
         if show_header:
             show_header = False
